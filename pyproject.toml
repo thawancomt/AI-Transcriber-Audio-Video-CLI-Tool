@@ -1,0 +1,11 @@
+[project]
+name = "whisper-transcript-from-thawancomt"
+version = "1.0.0"
+description = "Um script de linha de comando eficiente para transcrever arquivos de áudio e vídeo em legendas .srt usando a tecnologia Whisper."
+readme = "README.md"
+requires-python = "==3.12"
+dependencies = [
+    "faster-whisper>=1.1.1",
+    "pip>=25.2",
+    "torch>=2.7.1",
+]
