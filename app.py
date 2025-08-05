@@ -18,6 +18,7 @@ import sys
 from typing import List, Literal, TypedDict
 import av.error
 from datetime import datetime
+from math import floor
 
 from faster_whisper import WhisperModel
 
@@ -175,10 +176,22 @@ def main() -> None:
 
     with open(TEMP_PATH, "w", encoding="utf-8") as transcripted_file:
         time_start = datetime.now()
+        
+        from utils import TerminalTools as TT
+        
         for _, segment in enumerate(segs):
             pct = (segment.end / info.duration) * 100
-            sys.stdout.write(f"\rProgress: {pct:.2f}% - Text: {segment.text[:40]}...\n")
+            
+            # Terminal tools
+            TT.clear_terminal_line()
+            
+            bar = f"[{'🆗' * floor(pct)}{' ' * (100 - floor(pct))}]"
+            msg = f"[ Progress: {pct:.2f}% ] - Transcription: {segment.text[:40]}..."
+
+            sys.stdout.write("\r" + bar + " " + msg)
             sys.stdout.flush()
+            sys.stdout.flush()
+            
             transcripted_file.write(
                 f"[{segment.start:.2f}s - {segment.end:.2f}s] {segment.text} \n"
             )
