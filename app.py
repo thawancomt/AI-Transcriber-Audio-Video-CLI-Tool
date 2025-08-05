@@ -15,6 +15,7 @@ Requisitos:
 
 import os
 import sys
+import shutil
 from typing import List, Literal, TypedDict
 import av.error
 from datetime import datetime
@@ -185,10 +186,10 @@ def main() -> None:
             # Terminal tools
             TT.clear_terminal_line()
             
-            bar = f"[{'🆗' * floor(pct)}{' ' * (100 - floor(pct))}]"
+            bar_text = f"[{'🆗' * floor(pct)}{' ' * (100 - floor(pct))}]"
             msg = f"[ Progress: {pct:.2f}% ] - Transcription: {segment.text[:40]}..."
 
-            sys.stdout.write("\r" + bar + " " + msg)
+            sys.stdout.write("\r" + bar_text + " " + msg)
             sys.stdout.flush()
             sys.stdout.flush()
             
@@ -200,6 +201,11 @@ def main() -> None:
         print(f"running time: {finish_time - time_start}")
     # Resigning the file name from temp filename to final version filename
     os.rename(TEMP_PATH, FINAL_PATH)
+    
+    # Create transcription folder    
+    os.makedirs("transcriptions", exist_ok=True)
+    shutil.move(FINAL_PATH, "./transcriptions/")
+    
 
 
 
