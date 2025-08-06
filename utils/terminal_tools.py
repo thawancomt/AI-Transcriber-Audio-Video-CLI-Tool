@@ -1,7 +1,3 @@
-"""
-This module offer a lot of tools to give our software support to run
-"""
-
 class TerminalTools:
     """
     Class that provides a lot of tool to handle the terminal
