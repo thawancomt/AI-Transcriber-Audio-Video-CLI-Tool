@@ -10,3 +10,5 @@ wheels/
 .venv
 ./media/
 ./transcriptions/
+./media/*
+./transcriptions/*
