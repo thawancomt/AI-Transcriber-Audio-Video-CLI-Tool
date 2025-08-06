@@ -1,19 +1,41 @@
-from faster_whisper.transcribe import TranscriptionInfo, Segment
-from typing import TypedDict
-from math import ceil
-import sys
 
+from typing import TypedDict
+import sys
 import os
+
+from rich.console import Console
+
+console = Console()
+
+class Segment(TypedDict):
+    """A single transcript segment."""
+    text: str
+
+
+class TranscriptionInfo():
+    """Metadata about the audio/video file."""
+    language: str
+    duration: int   # seconds
 
 
 class TranscriptData(TypedDict):
-    pct: str
+    """Real-time status sent to the terminal."""
+    pct: int        # 0–100 inclusive
     segment: Segment
 
-def show_media_info(info: TranscriptionInfo):
-    # Information about file, language and duration
-    print(f"🌐 Detected language: {info.language}")
-    print(f"📼 Duração da mídia: {info.duration / 60:.2f}m")
+
+
+def show_media_info(info: TranscriptionInfo) -> None:
+    """
+    Print a short header describing the media file.
+
+    Parameters
+    ----------
+    info : TranscriptionInfo
+        The metadata dictionary.
+    """
+    console.print(f"🌐 [bold green] Detected language: [bold purple]{info.language}")
+    console.print(f"📼 [bold yellow] Duração da mídia: {info.duration / 60:.2f}m")
 
 
 def show_presentation():
@@ -21,17 +43,8 @@ def show_presentation():
 
     # Presentation
     os.system("cls" if os.name == "nt" else "clear")
-    print("🎤 Transcritor de Áudio/Vídeo para Legendas")
-    print("=" * 50)
+    console.print("🎤 [bold green] Transcritor de Áudio/Vídeo para Legendas")
+    console.print("[bold yellow]=" * 50)
 
-
-def show_transcript_status(data: TranscriptData):
-    """ show real time status"""
-    from utils import TerminalTools as TT
-
-    # Terminal tools
-    TT.clear_terminal_line()
-    bar_text = f"[{'|' * ceil(ceil(data['pct']) / 10)}{' ' * ceil((100 - ceil(data['pct'])) / 10)}]"
-    msg = f"[ Progress: {ceil(data['pct'])}% ] - Transcription: {data['segment'].text[:40]}..."
-    sys.stdout.write("\r" + bar_text + " " + msg)
-    sys.stdout.flush()
+def build_progress_bar():
+    pass

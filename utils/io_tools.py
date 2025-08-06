@@ -3,6 +3,11 @@ from typing import List
 
 import sys
 
+
+from rich.console import Console
+
+console = Console()
+
 VALID_FORMATS: List[str] = [
     "mp3",  # MPEG Audio
     "wav",  # Waveform Audio
@@ -34,10 +39,7 @@ def organize_files(input_dir: Path, output_dir: Path):
     like media/audio.mp3 instead just audio.mp3
     """
 
-    files = get_valid_files(
-        target_path=Path("."), valid_formats=VALID_FORMATS
-    )
-    
+    files = get_valid_files(target_path=Path("."), valid_formats=VALID_FORMATS)
 
     if len(files) == 0:
         return
@@ -50,7 +52,7 @@ def organize_files(input_dir: Path, output_dir: Path):
             continue
 
         file.replace(Path(input_dir) / file.name)
-        
+
         operation_log["moved_files"] += 1
 
     # LOG OPERTATION ----------------------------------------------
@@ -67,10 +69,11 @@ def organize_files(input_dir: Path, output_dir: Path):
         resume_text += ignored_files_text
 
     print(resume_text)
-    
+
+
 def get_valid_files(
     target_path: Path = Path("."),
-    valid_formats  = VALID_FORMATS,
+    valid_formats=VALID_FORMATS,
     input_dir: Path = Path("."),
 ) -> List[Path]:
     """
@@ -98,12 +101,13 @@ def get_valid_files(
     return filtered_files
 
 
-def create_necessary_dirs(directories : List[Path]):
+def create_necessary_dirs(directories: List[Path]):
     # Create input folder
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
-        
-def select_file_prompt(files: list[Path], output_folder : Path) -> Path:
+
+
+def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
     """
     Show an input prompt showing all the file that can be
     transcripted, user need to select one
@@ -114,19 +118,18 @@ def select_file_prompt(files: list[Path], output_folder : Path) -> Path:
     return: str | path (the filename of selected file)
     """
 
-    print("📁 Escolha o arquivo que voce deseja transcrever, use o numero do indice: ")
-    print("-" * 50)
+    import questionary
+
+    console.print(
+        "📁 [bold green] Escolha o arquivo que voce deseja transcrever, use o numero do indice: "
+    )
+    console.print("[bold yellow]-" * 50)
 
     def user_confirm_prompt():
-        print("This file have been already transcripted do you want to proceed?")
-
-        try:
-            input("Enter to proceed; cltr + c to cancel... ")
-        except KeyboardInterrupt:
-            print("Ignorando...")
-            return False
-
-        return True
+        console.print(
+            " ⚠️ [bold yellow] This file have been already transcripted do you want to proceed?"
+        )
+        return questionary.confirm("Deseja prosseguir?").ask()
 
     # All files inside the OUTPUT_DIRECTORY
     transcripted_files_in_output_dir = {
@@ -138,28 +141,19 @@ def select_file_prompt(files: list[Path], output_folder : Path) -> Path:
         file: (file.stem in transcripted_files_in_output_dir) for file in files
     }
 
+    files_for_menu = []
+
+    for file in files:
+        files_for_menu.append(questionary.Choice(title=f"{file.name} [Transcripted]" if status_map[file] else file.name, value=file, description=file))
+
     while True:
-        for _, file in enumerate(files):
-            print(
-                f"[{_}] - {file.name} {'[Transcripted 📄]' if status_map[file] else ''} 📂"
-            )
-
-        try:
-            user_input = input("☑️  Escolha o arquivo: ")
-            selected_file = files[int(user_input)]
-
-            if status_map[selected_file]:
-                # ask user if he wants top proceed to re-transcript that media
-                if user_confirm_prompt():
-                    pass
-                else:
-                    continue
-
+        selected_file = questionary.select(
+            "Selecione o arquivo que voce deseja transcrever: ",
+            choices=files_for_menu,
+            show_description=True,
+            instruction="Use as setas do teclado",
+            use_shortcuts=True,
+        ).ask(kbi_msg="Press shift+q to quit")
+        
+        if selected_file:
             return selected_file
-
-        except ValueError:
-            sys.stdout.flush()
-            print("❌ Digite apenas numeros...")
-        except IndexError:
-            sys.stdout.flush()
-            print("\r❌ Escolha apenas os arquivos listados...")

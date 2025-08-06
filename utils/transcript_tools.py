@@ -12,11 +12,6 @@ def _write_txt(file: TextIOWrapper, content):
     file.write(content)
     return file
 
-__all__=[
-    "write_file"
-]
-
-
 def write_file(
     file: TextIOWrapper,
     content,

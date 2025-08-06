@@ -8,9 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
-./media/
-./transcriptions/
-./media/*
-./transcriptions/*
-./*.mp4
-./*.mp3
+media/
+transcriptions
+media/
+transcriptions/
+*.mp4
+*.mp3
