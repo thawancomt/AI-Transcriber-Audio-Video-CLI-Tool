@@ -16,21 +16,31 @@ Requisitos:
 import os
 import sys
 import shutil
+from pathlib import Path
 from typing import List, Literal, TypedDict
 import av.error
-from datetime import datetime
-from math import floor
+from math import ceil
 
 from faster_whisper import WhisperModel
+from faster_whisper.transcribe import TranscriptionInfo, Segment
 
 MODELS_OPTIONS = ("tiny", "base", "small", "medium", "large-v2", "large-v3")
 ModelSize = Literal["tiny", "base", "small", "medium", "large-v2", "large-v3"]
+
+
+OUTPUT_DIRECTORY = "./transcriptions"
+INPUT_DIRECTORY = "./media"
+EXPORT_FORMAT = "srt"
 
 
 class TranscriptOptions(TypedDict):
     device: Literal["cpu", "gpu"]
     compute_type: str
     model_size_or_path: ModelSize
+
+class TranscriptData(TypedDict):
+    pct : str
+    segment : Segment
 
 
 VALID_FORMATS: List[str] = [
@@ -51,37 +61,35 @@ VALID_FORMATS: List[str] = [
 ]
 
 
-def get_valid_files() -> List[str]:
+def get_valid_files(
+    target_path: Path = Path("."), valid_formats: List[str] = None
+) -> List[Path]:
     """
-    This function analyze all the availables files on the actual directory
-    and return all the files on this among that are a valid transcriptable file, such as,
-    audio, videos and other compatibles formats.
+    This function analyze all the availables files on the target_path (param::)
+    and return all the files on this among that are a valid based on valid format provided
+    by the valid_formart (param::)
 
-    params: None
+    params:
+        - target_path : str ( path to the wished directory to be analized)
+        - valid_formats : List[str] an array of valid formats that will make a file valid or not
 
     return :
         An array with the available files
 
     """
     # Keeping in 3 differents vars, but it can be in only one
-    all_files: List[str] = [file for file in os.listdir() if not os.path.isdir(file)]
-    non_hidden_all_files: List[str] = [
-        file for file in all_files if not file.startswith((".", "_"))
+    filtered_files: List[str] = [
+        file
+        for file in Path(target_path or INPUT_DIRECTORY).iterdir()
+        if file.is_file()
+        and not file.name.startswith((".", ","))
+        and file.suffix.lstrip(".").lower() in valid_formats
     ]
 
-    # The filenames of all available files transcrible
-    valid_files: List[str] = []
-
-    # Checking valid file formats
-    for file in non_hidden_all_files:
-        if file_type := file.split(".")[-1]:
-            if file_type in VALID_FORMATS:
-                valid_files.append(file)
-
-    return valid_files
+    return filtered_files
 
 
-def select_file_prompt(files: list[str]) -> str:
+def select_file_prompt(files: list[Path]) -> Path:
     """
     Show an input prompt showing all the file that can be
     transcripted, user need to select one
@@ -92,29 +100,52 @@ def select_file_prompt(files: list[str]) -> str:
     return: str | path (the filename of selected file)
     """
 
-    if not files:
-        print(
-            "❌ Nenhum arquivo disponivel para transcrição.\nConsidere adicionar arquivos nos formatos compativeis."
-        )
-        sys.exit(1)
-
     print("📁 Escolha o arquivo que voce deseja transcrever, use o numero do indice: ")
     print("-" * 50)
 
+    def user_confirm_transcription():
+        print(
+            "This file apperentaly have been already transcripted do you want to proceed?"
+        )
+
+        try:
+            input("Enter to proceed; cltr + c to cancel... ")
+        except KeyboardInterrupt:
+            print("Ignorando...")
+            return False
+
+        return True
+
+    transcripted_files_in_output_dir = { f.stem for f in Path(OUTPUT_DIRECTORY).iterdir() }
+    
+    status_map = { file : file.stem in transcripted_files_in_output_dir for file in files }
+
     while True:
+
         for _, filename in enumerate(files):
-            print(f"[{_}] - {filename} 📂")
+            print(
+                f"[{_}] - {filename.name} {'[Transcripted 📄]' if status_map[filename] else ''} 📂"
+            )
 
         user_input = input("☑️  Escolha o arquivo: ")
 
         try:
-            return files[int(user_input)]
+            # Build the path to file
+            result = files[int(user_input)]
+
+            if status_map[result]:
+                if user_confirm_transcription():
+                    return result
+                else:
+                    continue
+            return result
+
         except ValueError:
             sys.stdout.flush()
             print("❌ Digite apenas numeros...")
         except IndexError:
             sys.stdout.flush()
-            print("\r❌ Indice digitado nao é valido...")
+            print("\r❌ Escolha apenas os arquivos listados...")
 
 
 def get_options(args: List[str]) -> TranscriptOptions:
@@ -148,68 +179,168 @@ def get_options(args: List[str]) -> TranscriptOptions:
     return options
 
 
+def send_valid_files_to_input_folder():
+    """
+    ATTENTION: NON-COMPONENTIBLE function, use just here in this software.
+    The porpouse of this function make it just suitable for this scope.
+    It depends exclusively on the INPUT_DIRECTORY and actual root directory
+
+    This functio aim to get all valid files available in the root folder and move to
+    an appropiated folder (INPUT_DIRECTORY)
+
+    It applies changes on how user select files, that function need to ensure the file path is completed
+    like media/audio.mp3 instead just audio.mp3
+    """
+    files = get_valid_files(target_path=Path("."), valid_formats=VALID_FORMATS)
+
+    if len(files) == 0:
+        return
+
+    operation_log = {"moved_files": 0, "ignored_files": 0}
+
+    for file in files:
+        if Path(OUTPUT_DIRECTORY, file).exists():
+            operation_log["ignored_files"] += 1
+            continue
+
+        shutil.move(file, INPUT_DIRECTORY)
+        operation_log["moved_files"] += 1
+
+    # the following lines adress to build a resume text to show what this operation did
+
+    moved_files_text = f"{operation_log['moved_files']} arquivos movidos ➡️ para a pasta {INPUT_DIRECTORY} \n"
+    ignored_files_text = f"{operation_log['ignored_files']} arquivos ignorados ❌ (ja existiam na pasta) {INPUT_DIRECTORY} \n"
+
+    resume_text = "Uma operação organizacional foi concluida: \n"
+
+    if operation_log["moved_files"]:
+        resume_text += moved_files_text
+    if operation_log["ignored_files"]:
+        resume_text += ignored_files_text
+
+    print(resume_text)
+
+
+def check_if_file_already_transcripted(file: Path, files_output: List[Path]):
+    """
+    This function intend to check if a file have been transcripted already
+
+    This function shall take the filename, remove extension, for instance:
+    'audio.mp3' should result in 'audio' and then check if this ('audio' + '.' + EXPORT_FORMAT) for example:
+        EXPORT_FORMAT = srt;
+        expected_filename_in_output_directory -> (audio.srt)
+    already exist in the OUTPUT_DIRECTORY
+
+    params:
+        - filename : the target filename
+    """
+    return file.stem in {file.stem for file in files_output}
+
+
+def show_presentation():
+    """Show software presentation on terminal"""
+
+    # Presentation
+    os.system("cls" if os.name == "nt" else "clear")
+    print("🎤 Transcritor de Áudio/Vídeo para Legendas")
+    print("=" * 50)
+
+
+def create_necessary_dirs():
+    # Create input folder
+    os.makedirs(INPUT_DIRECTORY, exist_ok=True)
+
+    # Create transcription folder
+    os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
+
+
+def show_media_info(info: TranscriptionInfo):
+    # Information about file, language and duration
+    print(f"🌐 Detected language: {info.language}")
+    print(f"📼 Duração da mídia: {info.duration / 60:.2f}m")
+
+
+def show_transcript_status(data : TranscriptData):
+    from utils import TerminalTools as TT
+
+    # Terminal tools
+    TT.clear_terminal_line()
+    bar_text = f"[{'|' * ceil(ceil(data["pct"]) / 10)}{' ' * ceil((100 - ceil(data["pct"])) / 10)}]"
+    msg = f"[ Progress: {ceil(data["pct"])}% ] - Transcription: {data["segment"].text[:40]}..."
+    sys.stdout.write("\r" + bar_text + " " + msg)
+    sys.stdout.flush()
+
+
 def main() -> None:
     """
     The main function.
     """
-    #Presentation
-    os.system("cls" if os.name == "nt" else "clear")
-    print("🎤 Transcritor de Áudio/Vídeo para Legendas")
-    print("=" * 50)
+ 
+    show_presentation()
+
+    create_necessary_dirs()
+
+    # organize media files sending it files to a common folder named: (INPUT_DIRECTORY)
+    send_valid_files_to_input_folder()
+
+    # Fetch all possible files to transcript on files inside the INPUT_DIRECTORY
+    input_dir_valid_files = get_valid_files(
+        target_path=INPUT_DIRECTORY, valid_formats=VALID_FORMATS
+    )
+
+    # If no files detected on INPUT_DIRECTORY, close the script and log some help
+    if len(input_dir_valid_files) == 0:
+        print(
+            f"❌ Nenhum arquivo disponivel para transcrição.\nConsidere adicionar arquivos nos formatos compativeis. Verifique se voce adicionou arquivos a pasta atual {INPUT_DIRECTORY}"
+        )
+        sys.exit(1)
+
+    # get  wanted file
+    selected_file = select_file_prompt(files=input_dir_valid_files)
     
-    # Set up
-    # Fetch all possible files to transcript
-    valid_files = get_valid_files()
+    # getting config ------------------------------------
+    options = get_options(sys.argv)
 
-    # Select the wanted file
-    file_name = select_file_prompt(files=valid_files)
-
-    # Opening the model here, to dont slow down the initialization of the scritp
-    model = WhisperModel(**get_options(sys.argv))
-
-    segs, info = model.transcribe(file_name, beam_size=5)
-    # Information about file, language and duration
-    print(f"🌐 Detected language: {info.language}")
-    print(f"📼 Duração da mídia: {info.duration}")
-
-    TEMP_PATH = f"{file_name.split('.')[0]}.srt.tmp"
-    FINAL_PATH = f"{file_name.split('.')[0]}.srt"
-
-    with open(TEMP_PATH, "w", encoding="utf-8") as transcripted_file:
-        time_start = datetime.now()
+    # Opening the model here, to dont slow down the initialization of the scritp ----------------
+    try:
+        print(f"\n🤖 Carregando modelo '{options['model_size_or_path']}' ({options['device']})…")
+        model = WhisperModel(**options)
+    except Exception as e:
+        print(f"❌ Erro ao carregar modelo {e}")
         
-        from utils import TerminalTools as TT
-        
+
+    print("🚀 Iniciando transcrição")
+    segs, media_info = model.transcribe(selected_file, beam_size=5)
+
+    show_media_info(info=media_info)
+
+    # Create temp file on Path vars
+    temp_file = Path(f"{selected_file.stem}.tmp")
+    with open(temp_file, "w", encoding="utf-8") as transcripted_file:
         for _, segment in enumerate(segs):
-            pct = (segment.end / info.duration) * 100
-            
-            # Terminal tools
-            TT.clear_terminal_line()
-            
-            bar_text = f"[{'🆗' * floor(pct)}{' ' * (100 - floor(pct))}]"
-            msg = f"[ Progress: {pct:.2f}% ] - Transcription: {segment.text[:40]}..."
+            pct = (segment.end / media_info.duration) * 100
 
-            sys.stdout.write("\r" + bar_text + " " + msg)
-            sys.stdout.flush()
-            sys.stdout.flush()
-            
+            show_transcript_status( data = {
+                "pct" : pct,
+                "segment" : segment
+            })
+
+            # Write on file
             transcripted_file.write(
                 f"[{segment.start:.2f}s - {segment.end:.2f}s] {segment.text} \n"
             )
-        finish_time = datetime.now()
-        
-        print(f"running time: {finish_time - time_start}")
+            
     # Resigning the file name from temp filename to final version filename
-    os.rename(TEMP_PATH, FINAL_PATH)
+    final_filename = Path(f"{selected_file.stem}" + "." + EXPORT_FORMAT)
     
-    # Create transcription folder    
-    os.makedirs("transcriptions", exist_ok=True)
-    shutil.move(FINAL_PATH, "./transcriptions/")
+    destination_path = Path(OUTPUT_DIRECTORY) / final_filename
     
+    try:
+        temp_file.replace(destination_path)
+    except Exception as e:
+        print(f"❌ Erro ao processar transcrição: {e}")
 
 
-
- 
 try:
     main()
 except av.error.InvalidDataError:
