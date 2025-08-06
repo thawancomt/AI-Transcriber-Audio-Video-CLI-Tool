@@ -152,8 +152,12 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
             choices=files_for_menu,
             show_description=True,
             instruction="Use as setas do teclado",
-            use_shortcuts=True,
         ).unsafe_ask()
         
         if selected_file:
+            if status_map[selected_file]:
+                if user_confirm_prompt():
+                    pass
+                else:
+                    continue
             return selected_file
