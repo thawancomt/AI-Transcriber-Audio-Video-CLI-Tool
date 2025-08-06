@@ -153,7 +153,7 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
             show_description=True,
             instruction="Use as setas do teclado",
             use_shortcuts=True,
-        ).ask(kbi_msg="Press shift+q to quit")
+        ).unsafe_ask()
         
         if selected_file:
             return selected_file
