@@ -10,8 +10,8 @@ class TerminalTools:
         """
         
         # Lazy import to avoid startup overhead (NFR-01)
-        import sys
         import shutil
+        import sys
         
         cols = shutil.get_terminal_size().columns
     

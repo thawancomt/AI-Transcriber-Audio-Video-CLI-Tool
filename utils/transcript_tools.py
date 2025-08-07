@@ -1,7 +1,10 @@
-from _io import TextIOWrapper
-from pathlib import Path
 import sys
-from utils.log_tools import show_media_info
+from _io import TextIOWrapper
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+from rich.console import Console
 from rich.progress import (
     BarColumn,
     Progress,
@@ -9,11 +12,8 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.console import Console
 
-from typing import TypedDict, Literal
-from dataclasses import dataclass
-
+from utils.log_tools import show_media_info
 
 MODELS_OPTIONS = ("tiny", "base", "small", "medium", "large-v2", "large-v3")
 ModelSize = Literal["tiny", "base", "small", "medium", "large-v2", "large-v3"]

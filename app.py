@@ -16,13 +16,11 @@ Requisitos:
 import argparse
 import sys
 from pathlib import Path
-
+from typing import List
 
 import av.error
 import psutil
 
-
-from typing import List
 from utils.io_tools import (
     create_necessary_dirs,
     get_valid_files,
@@ -32,14 +30,12 @@ from utils.io_tools import (
 from utils.log_tools import (
     show_presentation,
 )
-
 from utils.transcript_tools import (
     MODELS_OPTIONS,
-    run_transcription,
     RunTranscriptOptions,
     TranscriptOptions,
+    run_transcription,
 )
-
 
 OUTPUT_DIRECTORY = "./transcriptions"
 INPUT_DIRECTORY = "./media"

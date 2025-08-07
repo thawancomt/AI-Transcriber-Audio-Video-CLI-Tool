@@ -1,7 +1,6 @@
 
-from typing import TypedDict
-import sys
 import os
+from typing import TypedDict
 
 from rich.console import Console
 

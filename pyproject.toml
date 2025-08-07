@@ -10,5 +10,6 @@ dependencies = [
     "pip>=25.2",
     "questionary>=2.1.0",
     "rich>=14.1.0",
+    "ruff>=0.12.8",
     "torch>=2.7.1",
 ]
