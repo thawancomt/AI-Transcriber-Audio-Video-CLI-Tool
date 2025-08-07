@@ -33,8 +33,12 @@ from utils.log_tools import (
     show_presentation,
 )
 
-from utils.transcript_tools import (MODELS_OPTIONS, run_transcription, RunTranscriptOptions,
-                                    TranscriptOptions)
+from utils.transcript_tools import (
+    MODELS_OPTIONS,
+    run_transcription,
+    RunTranscriptOptions,
+    TranscriptOptions,
+)
 
 
 OUTPUT_DIRECTORY = "./transcriptions"
@@ -51,8 +55,7 @@ def get_arguments(args: List[str]) -> TranscriptOptions:
         description="Transcript audio/video files to wished format using Whisper"
     )
 
-    parser.add_argument("--cuda", action="store_true",
-                        help="Use CUDA if available")
+    parser.add_argument("--cuda", action="store_true", help="Use CUDA if available")
     parser.add_argument(
         "--model",
         default="tiny",
@@ -72,8 +75,7 @@ def get_arguments(args: List[str]) -> TranscriptOptions:
     options = vars(parsed_args)
 
     transcript_options = TranscriptOptions(
-        compute_type="float16" if options.get(
-            "gpu") or options.get("cuda") else "int8",
+        compute_type="float16" if options.get("gpu") or options.get("cuda") else "int8",
         device="cuda" if options.get("cuda") or options.get("gpu") else "cpu",
         model_size_or_path=options["model"],
         cpu_threads=int(options["cpu_threads"]),
@@ -88,12 +90,10 @@ def main() -> None:
     """
     show_presentation()
 
-    create_necessary_dirs(
-        directories=[Path(INPUT_DIRECTORY), Path(OUTPUT_DIRECTORY)])
+    create_necessary_dirs(directories=[Path(INPUT_DIRECTORY), Path(OUTPUT_DIRECTORY)])
 
     # organize media files sending it files to a common folder named: (INPUT_DIRECTORY)
-    organize_files(input_dir=Path(INPUT_DIRECTORY),
-                   output_dir=Path(OUTPUT_DIRECTORY))
+    organize_files(input_dir=Path(INPUT_DIRECTORY), output_dir=Path(OUTPUT_DIRECTORY))
 
     # get  wanted file
     selected_file = select_file_prompt(

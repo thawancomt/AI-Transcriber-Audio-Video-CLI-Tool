@@ -1,10 +1,7 @@
 from pathlib import Path
+from rich.console import Console
 from typing import List
 
-import sys
-
-
-from rich.console import Console
 
 console = Console()
 
@@ -73,7 +70,7 @@ def organize_files(input_dir: Path, output_dir: Path):
 
 def get_valid_files(
     target_path: Path = Path("."),
-    valid_formats=VALID_FORMATS,
+    valid_formats: List[str] = VALID_FORMATS,
     input_dir: Path = Path("."),
 ) -> List[Path]:
     """
@@ -90,7 +87,7 @@ def get_valid_files(
 
     """
     # Keeping in 3 differents vars, but it can be in only one
-    filtered_files: List[str] = [
+    filtered_files: List[Path] = [
         file
         for file in Path(target_path or input_dir).iterdir()
         if file.is_file()
@@ -141,10 +138,16 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
         file: (file.stem in transcripted_files_in_output_dir) for file in files
     }
 
-    files_for_menu = []
+    files_for_menu: List[questionary.Choice] = []
 
     for file in files:
-        files_for_menu.append(questionary.Choice(title=f"{file.name} [Transcripted]" if status_map[file] else file.name, value=file, description=file))
+        files_for_menu.append(
+            questionary.Choice(
+                title=f"{file.name} [Transcripted]" if status_map[file] else file.name,
+                value=file,
+                description=file,
+            )
+        )
 
     while True:
         selected_file = questionary.select(
@@ -153,7 +156,7 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
             show_description=True,
             instruction="Use as setas do teclado",
         ).unsafe_ask()
-        
+
         if selected_file:
             if status_map[selected_file]:
                 if user_confirm_prompt():
