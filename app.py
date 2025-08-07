@@ -62,7 +62,7 @@ def get_arguments(args: List[str]) -> TranscriptOptions:
     parser.add_argument(
         "--cpu-threads",
         default=int((psutil.cpu_count(logical=True) or 8) / 2),
-        choices=[str(pc) for pc in range(psutil.cpu_count()) if pc % 2 == 0],
+        choices=[str(pc) for pc in range(psutil.cpu_count() or 2)],
         help="Number of thread to assing to this transcription",
     )
 

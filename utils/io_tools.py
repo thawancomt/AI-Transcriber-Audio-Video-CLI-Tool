@@ -145,7 +145,7 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
             questionary.Choice(
                 title=f"{file.name} [Transcripted]" if status_map[file] else file.name,
                 value=file,
-                description=file,
+                description=str(file),
             )
         )
 
