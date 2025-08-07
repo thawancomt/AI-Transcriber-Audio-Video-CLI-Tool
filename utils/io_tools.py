@@ -1,3 +1,4 @@
+from _io import TextIOWrapper
 from pathlib import Path
 from typing import List
 
@@ -164,3 +165,50 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
                 else:
                     continue
             return selected_file
+
+
+def _write_srt(file: TextIOWrapper, index: int, start_time : float, end_time : float, content : str):
+    """"""
+    text = f"""{index}\n{start_time} --> {end_time}\n{content}\n\n"""
+    file.write(text)
+    return file
+
+
+def _write_txt(file: TextIOWrapper, content : str):
+    """Write on txt files"""
+    file.write(content)
+    return file
+
+
+def write_file(
+    file: TextIOWrapper,
+    content : str,
+    start_time : float,
+    end_time : float,
+    index : int = 0,
+    file_format: str = "txt",
+):
+    if file_format == "srt":
+        _write_srt(
+            file=file,
+            index=index,
+            start_time=start_time,
+            end_time=end_time,
+            content=content,
+        )
+    else:
+        _write_txt(file=file, content=content)
+        return file
+
+
+def save_from_tmp_file(tmp: Path, file: Path, export_format: str, output_dir : Path):
+    # Resigning the file name from temp filename to final version filename
+    final_filename = Path(f"{file.stem}" + "." + export_format)
+
+    destination_path = output_dir / final_filename
+
+    try:
+        tmp.replace(destination_path)
+    except Exception as e:
+        print(f"❌ Erro ao processar transcrição: {e}")
+

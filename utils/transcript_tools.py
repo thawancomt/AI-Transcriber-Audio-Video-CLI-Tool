@@ -1,5 +1,4 @@
 import sys
-from _io import TextIOWrapper
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -13,6 +12,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+from utils.io_tools import write_file
 from utils.log_tools import show_media_info
 
 MODELS_OPTIONS = ("tiny", "base", "small", "medium", "large-v2", "large-v3")
@@ -51,56 +51,13 @@ class RunTranscriptOptions:
     output_directory: Path
 
 
-def _write_srt(file: TextIOWrapper, index: int, start_time : float, end_time : float, content : str):
-    """"""
-    text = f"""{index}\n{start_time} --> {end_time}\n{content}\n\n"""
-    file.write(text)
-    return file
-
-
-def _write_txt(file: TextIOWrapper, content : str):
-    """Write on txt files"""
-    file.write(content)
-    return file
-
-
-def write_file(
-    file: TextIOWrapper,
-    content : str,
-    start_time : float,
-    end_time : float,
-    index : int = 0,
-    file_format: str = "txt",
-):
-    if file_format == "srt":
-        _write_srt(
-            file=file,
-            index=index,
-            start_time=start_time,
-            end_time=end_time,
-            content=content,
-        )
-    else:
-        _write_txt(file=file, content=content)
-        return file
-
-
-def save_from_tmp_file(tmp: Path, file: Path, export_format: str, output_dir : Path):
-    # Resigning the file name from temp filename to final version filename
-    final_filename = Path(f"{file.stem}" + "." + export_format)
-
-    destination_path = output_dir / final_filename
-
-    try:
-        tmp.replace(destination_path)
-    except Exception as e:
-        print(f"❌ Erro ao processar transcrição: {e}")
-
-
 def run_transcription(params: RunTranscriptOptions):
     """
-    Carrega as dependências pesadas e executa o processo de transcrição,
-    usando uma barra de progresso do Rich.
+    This function orchestrates the transcription process by loading the necessary model,
+    processing the audio file, and saving the transcription output.
+
+    params:
+        - params : RunTranscriptOptions object containing all necessary parameters for transcription
     """
     # Inicializa o console do Rich para uma saída bonita
     console = Console()
@@ -134,7 +91,7 @@ def run_transcription(params: RunTranscriptOptions):
 
     # Processo de transcrição
     console.print("🚀 [bold green]Iniciando transcrição...[/bold green]")
-    segments, media_info  = model.transcribe(str(params.file), beam_size=5)
+    segments, media_info = model.transcribe(str(params.file), beam_size=5)
 
     show_media_info(
         info=media_info
