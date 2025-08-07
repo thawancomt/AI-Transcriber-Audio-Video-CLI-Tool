@@ -51,14 +51,14 @@ class RunTranscriptOptions:
     output_directory: Path
 
 
-def _write_srt(file: TextIOWrapper, index, start_time, end_time, content):
+def _write_srt(file: TextIOWrapper, index: int, start_time : float, end_time : float, content : str):
     """"""
     text = f"""{index}\n{start_time} --> {end_time}\n{content}\n\n"""
     file.write(text)
     return file
 
 
-def _write_txt(file: TextIOWrapper, content):
+def _write_txt(file: TextIOWrapper, content : str):
     """Write on txt files"""
     file.write(content)
     return file
@@ -66,11 +66,11 @@ def _write_txt(file: TextIOWrapper, content):
 
 def write_file(
     file: TextIOWrapper,
-    content,
+    content : str,
+    start_time : float,
+    end_time : float,
+    index : int = 0,
     file_format: str = "txt",
-    start_time=None,
-    end_time=None,
-    index=None,
 ):
     if file_format == "srt":
         _write_srt(
@@ -85,11 +85,11 @@ def write_file(
         return file
 
 
-def save_from_tmp_file(tmp: Path, file: Path, export_format: str, output_dir):
+def save_from_tmp_file(tmp: Path, file: Path, export_format: str, output_dir : Path):
     # Resigning the file name from temp filename to final version filename
     final_filename = Path(f"{file.stem}" + "." + export_format)
 
-    destination_path = Path(output_dir) / final_filename
+    destination_path = output_dir / final_filename
 
     try:
         tmp.replace(destination_path)
@@ -134,7 +134,7 @@ def run_transcription(params: RunTranscriptOptions):
 
     # Processo de transcrição
     console.print("🚀 [bold green]Iniciando transcrição...[/bold green]")
-    segments, media_info = model.transcribe(str(params.file), beam_size=5)
+    segments, media_info  = model.transcribe(str(params.file), beam_size=5)
 
     show_media_info(
         info=media_info
