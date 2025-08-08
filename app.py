@@ -26,6 +26,7 @@ from utils.io_tools import (
     get_valid_files,
     organize_files,
     select_file_prompt,
+    save_transcription,
 )
 from utils.log_tools import (
     show_presentation,
@@ -84,6 +85,10 @@ def main() -> None:
     """
     The main function.
     """
+
+    args = get_arguments(sys.argv[1:])
+
+
     show_presentation()
 
     create_necessary_dirs(directories=[Path(INPUT_DIRECTORY), Path(OUTPUT_DIRECTORY)])
@@ -99,12 +104,19 @@ def main() -> None:
 
     params_for_transcription = RunTranscriptOptions(
         file=selected_file,
-        whisper_options=get_arguments(sys.argv[1:]),
-        export_fmt=EXPORT_FORMAT,
-        output_directory=Path(OUTPUT_DIRECTORY),
+        whisper_options=args,
     )
 
-    run_transcription(params=params_for_transcription)
+    segments = run_transcription(params=params_for_transcription)
+
+    save_transcription(
+        file=selected_file,
+        segments=segments,
+        output_directory=Path(OUTPUT_DIRECTORY),
+        export_fmt=EXPORT_FORMAT,
+    )
+
+    raise KeyboardInterrupt()
 
 
 if __name__ == "__main__":

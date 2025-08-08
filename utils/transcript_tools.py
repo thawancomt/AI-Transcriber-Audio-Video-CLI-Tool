@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Iterator
 
 from rich.console import Console
 from rich.progress import (
@@ -12,8 +12,20 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from utils.io_tools import write_file
 from utils.log_tools import show_media_info
+
+
+# Inicializa o console do Rich para uma saída bonita
+console = Console()
+
+try:
+    from faster_whisper import WhisperModel
+    from faster_whisper.transcribe import Segment
+except ImportError:
+    console.print(
+        "[bold red]faster-whisper package not found, run ´uv´ to sync dependencies"
+    )
+    sys.exit(1)
 
 MODELS_OPTIONS = ("tiny", "base", "small", "medium", "large-v2", "large-v3")
 ModelSize = Literal["tiny", "base", "small", "medium", "large-v2", "large-v3"]
@@ -47,11 +59,9 @@ class RunTranscriptOptions:
 
     file: Path
     whisper_options: TranscriptOptions
-    export_fmt: str
-    output_directory: Path
 
 
-def run_transcription(params: RunTranscriptOptions):
+def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
     """
     This function orchestrates the transcription process by loading the necessary model,
     processing the audio file, and saving the transcription output.
@@ -59,17 +69,8 @@ def run_transcription(params: RunTranscriptOptions):
     params:
         - params : RunTranscriptOptions object containing all necessary parameters for transcription
     """
-    # Inicializa o console do Rich para uma saída bonita
-    console = Console()
 
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError:
-        console.print(
-            "[bold red]faster-whisper package not found, run ´uv´ to sync dependencies"
-        )
-        sys.exit(1)
-
+    # Loading model
     try:
         console.print(
             f"\n🤖 Carregando modelo '[bold cyan]{params.whisper_options.model_size_or_path}[/bold cyan]' ({params.whisper_options.device})… usando cpu : {params.whisper_options.cpu_threads}"
@@ -97,8 +98,6 @@ def run_transcription(params: RunTranscriptOptions):
         info=media_info
     )  # Você pode refatorar esta função para usar o console.print também
 
-    temp_file = Path(f"{params.file.stem}.tmp")
-
     with Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -107,35 +106,12 @@ def run_transcription(params: RunTranscriptOptions):
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-        # Adicionamos uma "tarefa" à barra de progresso.
-        # O 'total' é a duração do vídeo em segundos, que nós conhecemos!
+        
         transcription_task = progress.add_task(
             "[cyan]Transcrevendo...", total=media_info.duration
         )
 
-        with open(temp_file, "w", encoding="utf-8") as f:
-            for idx, segment in enumerate(segments):
-                # Escreve o segmento no ficheiro
-                write_file(
-                    content=segment.text,
-                    end_time=segment.end,
-                    file=f,
-                    file_format=params.export_fmt,
-                    index=idx,
-                    start_time=segment.start,
-                )
+        for segment in segments:
+            yield segment
 
-                # Atualiza a barra de progresso, dizendo a ela em que ponto do tempo estamos.
-                progress.update(transcription_task, completed=segment.end)
-
-    # --- Finalização Segura ---
-    destination_path = (
-        Path(params.output_directory) / f"{params.file.stem}.{params.export_fmt}"
-    )
-    try:
-        temp_file.replace(destination_path)
-        console.print(
-            f"\n✅ [bold green]Transcrição salva com sucesso em:[/bold green] '{destination_path}'"
-        )
-    except Exception as e:
-        console.print(f"\n❌ [bold red]Erro ao salvar o ficheiro final:[/bold red] {e}")
+            progress.update(transcription_task, completed=segment.end)

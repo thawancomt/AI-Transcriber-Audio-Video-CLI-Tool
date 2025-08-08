@@ -1,8 +1,9 @@
 from _io import TextIOWrapper
 from pathlib import Path
-from typing import List
+from typing import List, Iterator, Literal
 
 from rich.console import Console
+from faster_whisper.transcribe import Segment
 
 console = Console()
 
@@ -167,14 +168,15 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
             return selected_file
 
 
-def _write_srt(file: TextIOWrapper, index: int, start_time : float, end_time : float, content : str):
+def _write_srt(
+    file: TextIOWrapper, index: int, start_time: float, end_time: float, content: str
+):
     """"""
     text = f"""{index}\n{start_time} --> {end_time}\n{content}\n\n"""
     file.write(text)
-    return file
 
 
-def _write_txt(file: TextIOWrapper, content : str):
+def _write_txt(file: TextIOWrapper, content: str):
     """Write on txt files"""
     file.write(content)
     return file
@@ -182,10 +184,10 @@ def _write_txt(file: TextIOWrapper, content : str):
 
 def write_file(
     file: TextIOWrapper,
-    content : str,
-    start_time : float,
-    end_time : float,
-    index : int = 0,
+    content: str,
+    start_time: float,
+    end_time: float,
+    index: int = 0,
     file_format: str = "txt",
 ):
     if file_format == "srt":
@@ -201,14 +203,25 @@ def write_file(
         return file
 
 
-def save_from_tmp_file(tmp: Path, file: Path, export_format: str, output_dir : Path):
-    # Resigning the file name from temp filename to final version filename
-    final_filename = Path(f"{file.stem}" + "." + export_format)
+def save_transcription(
+    file: Path,
+    segments: Iterator[Segment],
+    output_directory: Path,
+    export_fmt: Literal["txt", "srt"],
+):
+    temp_file = Path(output_directory / f"{file.stem}.tmp")
 
-    destination_path = output_dir / final_filename
+    with open(temp_file, "w", encoding="utf-8") as f:
+        for idx, seg in enumerate(segments, 1):
+            write_file(
+                file=f,
+                content=seg.text,
+                end_time=seg.end,
+                file_format="srt",
+                index=idx,
+                start_time=seg.start,
+            )
+        f.close()
+    final_file = Path(output_directory / f"{file.with_suffix(f'.{export_fmt}')}")
 
-    try:
-        tmp.replace(destination_path)
-    except Exception as e:
-        print(f"❌ Erro ao processar transcrição: {e}")
-
+    temp_file.replace(final_file)
