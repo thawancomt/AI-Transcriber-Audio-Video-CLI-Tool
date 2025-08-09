@@ -18,3 +18,4 @@ legend:
     - aac
 - `UR-5` The transcripted text need to be saved in a SRT file with the same name of the base filename (excluding the extension, like `mp4`, `mp3`).
 - `UR-6` The user must be able to select which type of model will be used to transcript user´s files.
+- `UR-7` The user must be able to select more than one file to be transcripted at once.

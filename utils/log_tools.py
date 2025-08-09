@@ -34,7 +34,7 @@ def show_media_info(info: TranscriptionInfo) -> None:
         The metadata dictionary.
     """
     console.print(f"🌐 [bold green] Detected language: [bold purple]{info.language}")
-    console.print(f"📼 [bold yellow] Duração da mídia: {info.duration / 60:.2f}m")
+    console.print(f"📼 [bold yellow] Duração da mídia: {(info.duration // 60):.0f}:{info.duration % 60:.0f}m")
 
 
 def show_presentation():
@@ -45,5 +45,6 @@ def show_presentation():
     console.print("🎤 [bold green] Transcritor de Áudio/Vídeo para Legendas")
     console.print("[bold yellow]=" * 50)
 
-def build_progress_bar():
-    pass
+
+def show_transcription_operation_details(model : str):
+    console.print(f"Carregando modelo {model}")

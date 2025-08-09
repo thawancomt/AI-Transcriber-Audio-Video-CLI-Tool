@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Iterator
+from typing import Iterator, Literal
 
 from rich.console import Console
 from rich.progress import (
@@ -14,18 +14,11 @@ from rich.progress import (
 
 from utils.log_tools import show_media_info
 
-
 # Inicializa o console do Rich para uma saída bonita
 console = Console()
 
-try:
-    from faster_whisper import WhisperModel
-    from faster_whisper.transcribe import Segment
-except ImportError:
-    console.print(
-        "[bold red]faster-whisper package not found, run ´uv´ to sync dependencies"
-    )
-    sys.exit(1)
+from faster_whisper import WhisperModel
+from faster_whisper.transcribe import Segment
 
 MODELS_OPTIONS = ("tiny", "base", "small", "medium", "large-v2", "large-v3")
 ModelSize = Literal["tiny", "base", "small", "medium", "large-v2", "large-v3"]
@@ -58,7 +51,7 @@ class RunTranscriptOptions:
     """
 
     file: Path
-    whisper_options: TranscriptOptions
+    model: WhisperModel
 
 
 def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
@@ -70,29 +63,12 @@ def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
         - params : RunTranscriptOptions object containing all necessary parameters for transcription
     """
 
-    # Loading model
-    try:
-        console.print(
-            f"\n🤖 Carregando modelo '[bold cyan]{params.whisper_options.model_size_or_path}[/bold cyan]' ({params.whisper_options.device})… usando cpu : {params.whisper_options.cpu_threads}"
-        )
-
-        # Carregamento do modelo
-        model = WhisperModel(
-            params.whisper_options.model_size_or_path,
-            device=params.whisper_options.device,
-            compute_type=params.whisper_options.compute_type,
-            cpu_threads=params.whisper_options.cpu_threads,
-        )
-
-    except Exception as e:
-        console.print(
-            f"❌ [bold red]Erro crítico ao carregar o modelo de IA:[/bold red] {e}"
-        )
-        sys.exit(1)
-
     # Processo de transcrição
-    console.print("🚀 [bold green]Iniciando transcrição...[/bold green]")
-    segments, media_info = model.transcribe(str(params.file), beam_size=5)
+    console.print(
+        f"🚀 [bold green] Starting transcripting [bold white][{params.file.stem}] [/bold green]"
+    )
+
+    segments, media_info = params.model.transcribe(str(params.file), beam_size=5)
 
     show_media_info(
         info=media_info
@@ -106,12 +82,13 @@ def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-        
         transcription_task = progress.add_task(
             "[cyan]Transcrevendo...", total=media_info.duration
         )
 
         for segment in segments:
-            yield segment
-
             progress.update(transcription_task, completed=segment.end)
+            yield segment
+        
+        progress.update(transcription_task, completed=float(segment.end))
+

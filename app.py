@@ -43,7 +43,7 @@ INPUT_DIRECTORY = "./media"
 EXPORT_FORMAT = "srt"
 
 
-def get_arguments(args: List[str]) -> TranscriptOptions:
+def get_arguments(args : int):
     """
     Given the CLI arguments returns the options to run the transcription
     """
@@ -88,7 +88,6 @@ def main() -> None:
 
     args = get_arguments(sys.argv[1:])
 
-
     show_presentation()
 
     create_necessary_dirs(directories=[Path(INPUT_DIRECTORY), Path(OUTPUT_DIRECTORY)])
@@ -97,27 +96,36 @@ def main() -> None:
     organize_files(input_dir=Path(INPUT_DIRECTORY), output_dir=Path(OUTPUT_DIRECTORY))
 
     # get  wanted file
-    selected_file = select_file_prompt(
+    selected_files = select_file_prompt(
         files=get_valid_files(target_path=Path(INPUT_DIRECTORY)),
         output_folder=Path(OUTPUT_DIRECTORY),
     )
 
-    params_for_transcription = RunTranscriptOptions(
-        file=selected_file,
-        whisper_options=args,
+    from faster_whisper import WhisperModel
+
+    model = WhisperModel(
+        model_size_or_path=args.model_size_or_path,
+        device=args.device,
+        compute_type=args.compute_type,
+        cpu_threads=args.cpu_threads,
     )
 
-    segments = run_transcription(params=params_for_transcription)
+    for file in selected_files:
+        params_for_transcription = RunTranscriptOptions(
+            model=model,
+            file=file,
+        )
 
-    save_transcription(
-        file=selected_file,
-        segments=segments,
-        output_directory=Path(OUTPUT_DIRECTORY),
-        export_fmt=EXPORT_FORMAT,
-    )
+        segments = run_transcription(params=params_for_transcription)
 
-    raise KeyboardInterrupt()
-
+        save_transcription(
+            file=file,
+            segments=segments,
+            output_directory=Path(OUTPUT_DIRECTORY),
+            export_fmt=EXPORT_FORMAT,
+        )
+    
+    
 
 if __name__ == "__main__":
     try:
@@ -125,6 +133,3 @@ if __name__ == "__main__":
     except av.error.InvalidDataError:
         print("Arquivo selecionado esta corrompido ou não é valido")
         sys.exit(1)
-
-    except KeyboardInterrupt:
-        print("\n🍃🍃🍃 Saindo...")

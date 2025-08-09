@@ -106,7 +106,7 @@ def create_necessary_dirs(directories: List[Path]):
         Path(directory).mkdir(exist_ok=True)
 
 
-def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
+def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
     """
     Show an input prompt showing all the file that can be
     transcripted, user need to select one
@@ -114,7 +114,7 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
     params:
         - files : a array with all the available files to be transcripted
 
-    return: str | path (the filename of selected file)
+    return: List[path] (List of selected file path)
     """
 
     import questionary
@@ -126,9 +126,9 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
 
     def user_confirm_prompt():
         console.print(
-            " ⚠️ [bold yellow] This file have been already transcripted do you want to proceed?"
+            " ⚠️ [bold yellow] Selected file(s) have already been transcripted"
         )
-        return questionary.confirm("Deseja prosseguir?").ask()
+        return questionary.confirm("Do you wanna proceed with operation?").ask()
 
     # All files inside the OUTPUT_DIRECTORY
     transcripted_files_in_output_dir = {
@@ -140,32 +140,40 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> Path:
         file: (file.stem in transcripted_files_in_output_dir) for file in files
     }
 
-    files_for_menu: List[questionary.Choice] = []
+    ALL_FILES  = "__ALL__"
+    choices_for_menu: List[questionary.Choice] = [
+        questionary.Choice("All available files", ALL_FILES, description="Select all available files" )
+    ]
 
     for file in files:
-        files_for_menu.append(
+        choices_for_menu.append(
             questionary.Choice(
                 title=f"{file.name} [Transcripted]" if status_map[file] else file.name,
                 value=file,
                 description=str(file),
+                
             )
         )
 
     while True:
-        selected_file = questionary.select(
-            "Selecione o arquivo que voce deseja transcrever: ",
-            choices=files_for_menu,
-            show_description=True,
-            instruction="Use as setas do teclado",
-        ).unsafe_ask()
+        selected_files = questionary.checkbox(
+            message="Selecione todos os arquivos a serem transcritos",
+            choices=choices_for_menu,
+            default=ALL_FILES
+        ).ask()
 
-        if selected_file:
-            if status_map[selected_file]:
+        print(selected_files)
+        if selected_files:
+            if any((file.value in status_map) for file in choices_for_menu):
                 if user_confirm_prompt():
                     pass
                 else:
                     continue
-            return selected_file
+        else:
+            console.print("⚠️ [bold red] You need to to select at least one file")
+            continue
+
+        return selected_files if ALL_FILES not in selected_files else files
 
 
 def _write_srt(
@@ -222,6 +230,16 @@ def save_transcription(
                 start_time=seg.start,
             )
         f.close()
-    final_file = Path(output_directory / f"{file.with_suffix(f'.{export_fmt}')}")
 
-    temp_file.replace(final_file)
+    final_file = Path(output_directory / f"{file.stem}{(f'.{export_fmt}')}")
+
+    try:
+        temp_file.replace(final_file)
+    except FileNotFoundError as e:
+        console.print(
+            "[bold red] It was not possible to save the file, more details: ", e
+        )
+    except Exception as e:
+        console.print(
+            f"[bold red] An error occour while saving file on output_folder [bold white]({output_directory})[bold red], see: \n{e}"
+        )
