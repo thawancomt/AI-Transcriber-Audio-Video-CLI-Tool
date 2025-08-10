@@ -16,7 +16,8 @@ Requisitos:
 import argparse
 import sys
 from pathlib import Path
-from typing import List
+
+from rich.console import Console
 
 import av.error
 import psutil
@@ -30,6 +31,7 @@ from utils.io_tools import (
 )
 from utils.log_tools import (
     show_presentation,
+    clear_terminal,
 )
 from utils.transcript_tools import (
     MODELS_OPTIONS,
@@ -42,6 +44,8 @@ OUTPUT_DIRECTORY = "./transcriptions"
 INPUT_DIRECTORY = "./media"
 EXPORT_FORMAT = "srt"
 
+
+console = Console()
 
 def get_arguments(args : int):
     """
@@ -114,6 +118,8 @@ def main() -> None:
         params_for_transcription = RunTranscriptOptions(
             model=model,
             file=file,
+            device=args.device,
+            cpu_threads=args.cpu_threads,
         )
 
         segments = run_transcription(params=params_for_transcription)
@@ -131,5 +137,9 @@ if __name__ == "__main__":
     try:
         main()
     except av.error.InvalidDataError:
-        print("Arquivo selecionado esta corrompido ou não é valido")
+        console.print("💢 [bold red] The selected file is corrupted or invalid")
         sys.exit(1)
+    except KeyboardInterrupt:
+        clear_terminal()
+        console.print("💨 [bold red]Transcription canceled by user.")
+        sys.exit(0)

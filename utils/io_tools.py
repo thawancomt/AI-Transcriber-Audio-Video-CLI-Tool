@@ -120,14 +120,15 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
     import questionary
 
     console.print(
-        "📁 [bold green] Escolha o arquivo que voce deseja transcrever, use o numero do indice: "
+        "📁 [bold green] Choose files to be transcripted: "
     )
     console.print("[bold yellow]-" * 50)
 
     def user_confirm_prompt():
         console.print(
-            " ⚠️ [bold yellow] Selected file(s) have already been transcripted"
+            "⚠️ [bold yellow] One or more selected files have already been transcripted"
         )
+        console.print("=" * 50)
         return questionary.confirm("Do you wanna proceed with operation?").ask()
 
     # All files inside the OUTPUT_DIRECTORY
@@ -142,7 +143,7 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
 
     ALL_FILES  = "__ALL__"
     choices_for_menu: List[questionary.Choice] = [
-        questionary.Choice("All available files", ALL_FILES, description="Select all available files" )
+        questionary.Choice("All available files", ALL_FILES, description="Select all available files",)
     ]
 
     for file in files:
@@ -151,19 +152,19 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
                 title=f"{file.name} [Transcripted]" if status_map[file] else file.name,
                 value=file,
                 description=str(file),
-                
             )
         )
 
     while True:
         selected_files = questionary.checkbox(
-            message="Selecione todos os arquivos a serem transcritos",
+            message="Select files to transcribe:",
             choices=choices_for_menu,
-            default=ALL_FILES
-        ).ask()
+        ).unsafe_ask()
 
         if selected_files:
             if any((file.value in status_map) for file in choices_for_menu):
+                import os
+                os.system("clear" if os.name == "posix" else "cls")
                 if user_confirm_prompt():
                     pass
                 else:
