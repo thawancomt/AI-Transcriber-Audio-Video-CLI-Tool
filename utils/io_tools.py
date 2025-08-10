@@ -162,7 +162,6 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
             default=ALL_FILES
         ).ask()
 
-        print(selected_files)
         if selected_files:
             if any((file.value in status_map) for file in choices_for_menu):
                 if user_confirm_prompt():
