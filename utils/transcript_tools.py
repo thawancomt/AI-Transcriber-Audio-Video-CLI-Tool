@@ -86,9 +86,11 @@ def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
             "[cyan]Transcrevendo...", total=media_info.duration
         )
 
+
         for segment in segments:
             progress.update(transcription_task, completed=segment.end)
             yield segment
+
+        progress.update(transcription_task, completed=media_info.duration)
         
-        progress.update(transcription_task, completed=float(segment.end))
 
