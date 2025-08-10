@@ -28,6 +28,8 @@ Antes de começar, certifique-se de que você tem os seguintes softwares instala
 
 - **Python 3.12**
 - **astral-uv**
+
+
 Para aceleração GPU, instale:
 - Nvidia Cuda ToolKit
 - Nvidia cuNND
