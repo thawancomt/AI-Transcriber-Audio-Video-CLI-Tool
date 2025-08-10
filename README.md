@@ -20,72 +20,63 @@ O objetivo é fornecer uma ferramenta simples, mas poderosa, para que usuários 
 
 ## 📂 Documentação Completa
 
-Toda a documentação formal do projeto, incluindo a **Especificação de Requisitos do Usuário (URS)**, a **Especificação de Requisitos do Software (SRS)**, o **Desenho da Arquitetura (SDS)** com fluxogramas e o **Plano de Testes**, está disponível na pasta `/docs` deste repositório.
+Toda a documentação formal do projeto, incluindo a **Especificação de Requisitos do Usuário (URS)**, a **Especificação de Requisitos do Software (SRS)**, o **Desenho da Arquitetura (SDS)** com fluxogramas está disponível na pasta `/docs` deste repositório.
 
 ## 🛠️ Pré-requisitos
 
 Antes de começar, certifique-se de que você tem os seguintes softwares instalados:
 
 - **Python 3.12**
-- **FFmpeg**: É uma dependência crucial para o processamento de áudio.
-  - **Windows**: Baixe e adicione ao PATH do sistema.
-  - **macOS (via Homebrew)**: `brew install ffmpeg`
-  - **Linux (Debian/Ubuntu)**: `sudo apt update && sudo apt install ffmpeg`
+- **astral-uv**
+Para aceleração GPU, instale:
+- Nvidia Cuda ToolKit
+- Nvidia cuNND
+- Nvidia CuBlas
 
 ## 🚀 Instalação
 
 1. Clone o repositório:
 
    ```bash
-   git clone https://github.com/seu-usuario/seu-repositorio.git
-   cd seu-repositorio
+   git clone https://github.com/thawancomt/whisper-transcript.git
+   cd whisper-transcript
    ```
 
-2. Crie e ative um ambiente virtual (Recomendado):
+2. Instale as dependencias:
 
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # No Windows: venv\Scripts\activate
+   uv sync
    ```
 
-3. Instale as dependências:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
 
 ## (Como Usar)
 
 1. Coloque os arquivos de áudio ou vídeo que você deseja transcrever na pasta do projeto.
 2. Execute o script no seu terminal.
 
+
+
 ### Uso Básico (com CPU):
 
+(Modelos disponíveis: `tiny`, `base`, `small`, `medium`, `large-v2`, `large-v3`)
+
 ```bash
-python app.py
+python app.py [--cpu-threads] [--model=modelo_desejado]
 ```
 
 O script irá listar os arquivos disponíveis e você poderá escolher um número para iniciar a transcrição.
 
-### Uso com GPU (Requer NVIDIA CUDA):
+### Uso com GPU (Requer NVIDIA CUDA) e drivers instalados no sistema:
 
 ```bash
-python app.py --gpu
+python app.py --cuda [--cpu-threads] [--model=modelo_desejado]
 ```
 
-### Selecionando um Modelo Específico:  
-(Modelos disponíveis: `tiny`, `base`, `small`, `medium`, `large-v2`, `large-v3`)
 
-```bash
-python app.py --model=small
-```
-
-### Combinando Opções:
-
-```bash
-python app.py --gpu --model=medium
-```
 
 ## 📜 Licença
 
 Este projeto está licenciado sob a **Licença MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+
+# Instalação para rodar no linux

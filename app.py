@@ -13,189 +13,123 @@ Requisitos:
 
 """
 
-import os
+import argparse
 import sys
-from typing import List, Literal, TypedDict
+from pathlib import Path
+from typing import List
+
 import av.error
-from datetime import datetime
+import psutil
 
-from faster_whisper import WhisperModel
+from utils.io_tools import (
+    create_necessary_dirs,
+    get_valid_files,
+    organize_files,
+    select_file_prompt,
+    save_transcription,
+)
+from utils.log_tools import (
+    show_presentation,
+)
+from utils.transcript_tools import (
+    MODELS_OPTIONS,
+    RunTranscriptOptions,
+    TranscriptOptions,
+    run_transcription,
+)
 
-MODELS_OPTIONS = ("tiny", "base", "small", "medium", "large-v2", "large-v3")
-ModelSize = Literal["tiny", "base", "small", "medium", "large-v2", "large-v3"]
-
-
-class TranscriptOptions(TypedDict):
-    device: Literal["cpu", "gpu"]
-    compute_type: str
-    model_size_or_path: ModelSize
-
-
-VALID_FORMATS: List[str] = [
-    "mp3",  # MPEG Audio
-    "wav",  # Waveform Audio
-    "m4a",  # MPEG-4 Audio (AAC)
-    "mp4",  # MPEG-4 (pode conter vídeo, mas o áudio será extraído)
-    "webm",  # Web Media
-    "ogg",  # Ogg Vorbis
-    "flac",  # Free Lossless Audio Codec
-    "aac",  # Advanced Audio Coding
-    "opus",  # Usado em Discord, WebRTC etc.
-    "wma",  # Windows Media Audio
-    "alac",  # Apple Lossless Audio Codec
-    "aiff",  # Audio Interchange File Format
-    "amr",  # Adaptive Multi-Rate (usado em celulares antigos)
-    "3gp",  # Formato de vídeo/áudio em celulares, extrai o áudio
-]
+OUTPUT_DIRECTORY = "./transcriptions"
+INPUT_DIRECTORY = "./media"
+EXPORT_FORMAT = "srt"
 
 
-def get_valid_files() -> List[str]:
-    """
-    This function analyze all the availables files on the actual directory
-    and return all the files on this among that are a valid transcriptable file, such as,
-    audio, videos and other compatibles formats.
-
-    params: None
-
-    return :
-        An array with the available files
-
-    """
-    # Keeping in 3 differents vars, but it can be in only one
-    all_files: List[str] = [file for file in os.listdir() if not os.path.isdir(file)]
-    non_hidden_all_files: List[str] = [
-        file for file in all_files if not file.startswith((".", "_"))
-    ]
-
-    # The filenames of all available files transcrible
-    valid_files: List[str] = []
-
-    # Checking valid file formats
-    for file in non_hidden_all_files:
-        if file_type := file.split(".")[-1]:
-            if file_type in VALID_FORMATS:
-                valid_files.append(file)
-
-    return valid_files
-
-
-def select_file_prompt(files: list[str]) -> str:
-    """
-    Show an input prompt showing all the file that can be
-    transcripted, user need to select one
-
-    params:
-        - files : a array with all the available files to be transcripted
-
-    return: str | path (the filename of selected file)
-    """
-
-    if not files:
-        print(
-            "❌ Nenhum arquivo disponivel para transcrição.\nConsidere adicionar arquivos nos formatos compativeis."
-        )
-        sys.exit(1)
-
-    print("📁 Escolha o arquivo que voce deseja transcrever, use o numero do indice: ")
-    print("-" * 50)
-
-    while True:
-        for _, filename in enumerate(files):
-            print(f"[{_}] - {filename} 📂")
-
-        user_input = input("☑️  Escolha o arquivo: ")
-
-        try:
-            return files[int(user_input)]
-        except ValueError:
-            sys.stdout.flush()
-            print("❌ Digite apenas numeros...")
-        except IndexError:
-            sys.stdout.flush()
-            print("\r❌ Indice digitado nao é valido...")
-
-
-def get_options(args: List[str]) -> TranscriptOptions:
+def get_arguments(args : int):
     """
     Given the CLI arguments returns the options to run the transcription
     """
 
-    options: TranscriptOptions = {
-        "device": "cpu",
-        "model_size_or_path": "medium",
-        "compute_type": "int8",
-    }
+    parser = argparse.ArgumentParser(
+        description="Transcript audio/video files to wished format using Whisper"
+    )
 
-    # Check for GPU/CUDA usage
-    if "--gpu" in args or "--cuda" in args:
-        options["device"] = "cuda"
-        options["compute_type"] = "float16"
+    parser.add_argument("--cuda", action="store_true", help="Use CUDA if available")
+    parser.add_argument(
+        "--model",
+        default="tiny",
+        choices=MODELS_OPTIONS,
+        help=f"Model size (default: tiny), options {', '.join(MODELS_OPTIONS)}",
+    )
 
-    for arg in args:
-        if arg.startswith("--model="):
-            model = arg.split("=")[1]
-            if model in MODELS_OPTIONS:
-                options["model_size_or_path"] = model
-                print(f"🤖 Usando modelo: {model}")
+    parser.add_argument(
+        "--cpu-threads",
+        default=int((psutil.cpu_count(logical=True) or 8) / 2),
+        choices=[str(pc) for pc in range(psutil.cpu_count() or 2)],
+        help="Number of thread to assing to this transcription",
+    )
 
-            else:
-                print(f"❌ Modelo '{model}' não é válido.")
-                print(f"🔎 Modelos válidos: {', '.join(MODELS_OPTIONS)}")
-                sys.exit(1)
+    parsed_args = parser.parse_args(args)
 
-    return options
+    options = vars(parsed_args)
+
+    transcript_options = TranscriptOptions(
+        compute_type="float16" if options.get("gpu") or options.get("cuda") else "int8",
+        device="cuda" if options.get("cuda") or options.get("gpu") else "cpu",
+        model_size_or_path=options["model"],
+        cpu_threads=int(options["cpu_threads"]),
+    )
+
+    return transcript_options
 
 
 def main() -> None:
     """
     The main function.
     """
-    #Presentation
-    os.system("cls" if os.name == "nt" else "clear")
-    print("🎤 Transcritor de Áudio/Vídeo para Legendas")
-    print("=" * 50)
+
+    args = get_arguments(sys.argv[1:])
+
+    show_presentation()
+
+    create_necessary_dirs(directories=[Path(INPUT_DIRECTORY), Path(OUTPUT_DIRECTORY)])
+
+    # organize media files sending it files to a common folder named: (INPUT_DIRECTORY)
+    organize_files(input_dir=Path(INPUT_DIRECTORY), output_dir=Path(OUTPUT_DIRECTORY))
+
+    # get  wanted file
+    selected_files = select_file_prompt(
+        files=get_valid_files(target_path=Path(INPUT_DIRECTORY)),
+        output_folder=Path(OUTPUT_DIRECTORY),
+    )
+
+    from faster_whisper import WhisperModel
+
+    model = WhisperModel(
+        model_size_or_path=args.model_size_or_path,
+        device=args.device,
+        compute_type=args.compute_type,
+        cpu_threads=args.cpu_threads,
+    )
+
+    for file in selected_files:
+        params_for_transcription = RunTranscriptOptions(
+            model=model,
+            file=file,
+        )
+
+        segments = run_transcription(params=params_for_transcription)
+
+        save_transcription(
+            file=file,
+            segments=segments,
+            output_directory=Path(OUTPUT_DIRECTORY),
+            export_fmt=EXPORT_FORMAT,
+        )
     
-    # Set up
-    # Fetch all possible files to transcript
-    valid_files = get_valid_files()
+    
 
-    # Select the wanted file
-    file_name = select_file_prompt(files=valid_files)
-
-    # Opening the model here, to dont slow down the initialization of the scritp
-    model = WhisperModel(**get_options(sys.argv))
-
-    segs, info = model.transcribe(file_name, beam_size=5)
-    # Information about file, language and duration
-    print(f"🌐 Detected language: {info.language}")
-    print(f"📼 Duração da mídia: {info.duration}")
-
-    TEMP_PATH = f"{file_name.split('.')[0]}.srt.tmp"
-    FINAL_PATH = f"{file_name.split('.')[0]}.srt"
-
-    with open(TEMP_PATH, "w", encoding="utf-8") as transcripted_file:
-        time_start = datetime.now()
-        for _, segment in enumerate(segs):
-            pct = (segment.end / info.duration) * 100
-            sys.stdout.write(f"\rProgress: {pct:.2f}% - Text: {segment.text[:40]}...\n")
-            sys.stdout.flush()
-            transcripted_file.write(
-                f"[{segment.start:.2f}s - {segment.end:.2f}s] {segment.text} \n"
-            )
-        finish_time = datetime.now()
-        
-        print(f"running time: {finish_time - time_start}")
-    # Resigning the file name from temp filename to final version filename
-    os.rename(TEMP_PATH, FINAL_PATH)
-
-
-
- 
-try:
-    main()
-except av.error.InvalidDataError:
-    print("Arquivo selecionado esta corrompido ou não é valido")
-    sys.exit(1)
-
-except KeyboardInterrupt:
-    print("\n🍃🍃🍃 Saindo...")
+if __name__ == "__main__":
+    try:
+        main()
+    except av.error.InvalidDataError:
+        print("Arquivo selecionado esta corrompido ou não é valido")
+        sys.exit(1)
