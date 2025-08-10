@@ -1,4 +1,3 @@
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Literal
@@ -52,6 +51,8 @@ class RunTranscriptOptions:
 
     file: Path
     model: WhisperModel
+    device: Literal["cpu", "cuda"]
+    cpu_threads: int
 
 
 def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
@@ -65,7 +66,10 @@ def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
 
     # Processo de transcrição
     console.print(
-        f"🚀 [bold green] Starting transcripting [bold white][{params.file.stem}] [/bold green]"
+        f"🚀 [bold green] Starting transcripting : [bold white][{params.file.stem}][/bold green]"
+    )
+    console.print(
+        f"[bold blue] Using device: {params.device.upper()} [bold yellow] CPU cores : {params.cpu_threads}"
     )
 
     segments, media_info = params.model.transcribe(str(params.file), beam_size=5)
@@ -86,8 +90,13 @@ def run_transcription(params: RunTranscriptOptions) -> Iterator[Segment]:
             "[cyan]Transcrevendo...", total=media_info.duration
         )
 
-
+        console.print(
+                "[bold yellow]=" * 50
+            )
         for segment in segments:
+            console.print(
+                f"[bold green]Transcribed segment: [bold white]{segment.text}[/bold green] [bold yellow]({segment.start:.2f}s - {segment.end:.2f}s)"
+            )
             progress.update(transcription_task, completed=segment.end)
             yield segment
 

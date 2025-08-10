@@ -34,17 +34,22 @@ def show_media_info(info: TranscriptionInfo) -> None:
         The metadata dictionary.
     """
     console.print(f"🌐 [bold green] Detected language: [bold purple]{info.language}")
-    console.print(f"📼 [bold yellow] Duração da mídia: {(info.duration // 60):.0f}:{info.duration % 60:.0f}m")
+    console.print(f"📼 [bold yellow] Media length: {(info.duration // 60):.0f}:{info.duration % 60:.0f}m")
 
 
 def show_presentation():
     """Show software presentation on terminal"""
 
     # Presentation
-    os.system("cls" if os.name == "nt" else "clear")
-    console.print("🎤 [bold green] Transcritor de Áudio/Vídeo para Legendas")
+    clear_terminal()
+    console.print("🎤 [bold green] AI Audio & Video Transcriptor")
     console.print("[bold yellow]=" * 50)
 
 
 def show_transcription_operation_details(model : str):
-    console.print(f"Carregando modelo {model}")
+    console.print(f"[bold yellow]Loading model: {model}")
+
+
+def clear_terminal():
+    """Clear the terminal screen."""
+    os.system("cls" if os.name == "nt" else "clear")
