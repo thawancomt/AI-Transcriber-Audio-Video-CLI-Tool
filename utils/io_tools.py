@@ -119,9 +119,7 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
 
     import questionary
 
-    console.print(
-        "📁 [bold green] Choose files to be transcripted: "
-    )
+    console.print("📁 [bold green] Choose files to be transcripted: ")
     console.print("[bold yellow]-" * 50)
 
     def user_confirm_prompt():
@@ -138,12 +136,16 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
 
     # For each file we create a indice on this to mark if file was transcripted or not
     status_map = {
-        file: (file.stem in transcripted_files_in_output_dir) for file in files
+        file : (file.stem in transcripted_files_in_output_dir) for file in files
     }
 
-    ALL_FILES  = "__ALL__"
+    ALL_FILES = "__ALL__"
     choices_for_menu: List[questionary.Choice] = [
-        questionary.Choice("All available files", ALL_FILES, description="Select all available files",)
+        questionary.Choice(
+            "All available files",
+            ALL_FILES,
+            description="Select all available files",
+        )
     ]
 
     for file in files:
@@ -162,8 +164,9 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
         ).unsafe_ask()
 
         if selected_files:
-            if any((file.value in status_map) for file in choices_for_menu):
+            if any((status_map[file]) for file in files):
                 import os
+
                 os.system("clear" if os.name == "posix" else "cls")
                 if user_confirm_prompt():
                     pass
