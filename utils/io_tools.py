@@ -131,13 +131,10 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
 
     # All files inside the OUTPUT_DIRECTORY
     transcripted_files_in_output_dir = {
-        transcripted_file.stem for transcripted_file in output_folder.iterdir()
+        transcripted_file.name for transcripted_file in output_folder.iterdir()
     }
 
-    # For each file we create a indice on this to mark if file was transcripted or not
-    status_map = {
-        file : (file.stem in transcripted_files_in_output_dir) for file in files
-    }
+    
 
     ALL_FILES = "__ALL__"
     choices_for_menu: List[questionary.Choice] = [
@@ -149,22 +146,23 @@ def select_file_prompt(files: list[Path], output_folder: Path) -> List[Path]:
     ]
 
     for file in files:
+        title  = f"{file.name} [Transcripted]" if file.with_suffix(".srt").name in transcripted_files_in_output_dir  else file.name
         choices_for_menu.append(
             questionary.Choice(
-                title=f"{file.name} [Transcripted]" if status_map[file] else file.name,
+                title=title,
                 value=file,
                 description=str(file),
             )
         )
 
     while True:
-        selected_files = questionary.checkbox(
+        selected_files : List[Path] = questionary.checkbox(
             message="Select files to transcribe:",
             choices=choices_for_menu,
         ).unsafe_ask()
 
         if selected_files:
-            if any((status_map[file]) for file in files):
+            if any( (file.with_suffix(".srt") in transcripted_files_in_output_dir) for file in selected_files):
                 import os
 
                 os.system("clear" if os.name == "posix" else "cls")
